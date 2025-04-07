@@ -94,7 +94,8 @@ export class HabitsService {
   }
 
   async createHabit(userId: string, body: CreateHabitDto) {
-    const day = new Date().getDay()
+    let day = new Date().getDay()
+    day = day === 0 ? 7 : day
 
     const newHabit = await this.prisma.habit.create({
       data: {
@@ -107,7 +108,8 @@ export class HabitsService {
           ? {
               create: {}
             }
-          : undefined
+          : undefined,
+        createdAt: new Date(body.createdAt)
       },
       include: {
         userHabits: true

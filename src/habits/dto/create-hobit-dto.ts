@@ -18,4 +18,7 @@ export class CreateHabitDto {
 
   @IsEnum(HabitTimeOfDay)
   timeOfDay: HabitTimeOfDay
+
+  @IsString()
+  createdAt: string
 }
