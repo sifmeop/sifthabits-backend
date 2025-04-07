@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum HabitStatus {
+  IN_PROGRESS
+  DONE
+  MISSED
+}
+
+enum HabitTimeOfDay {
+  MORNING
+  AFTERNOON
+  EVENING
+  ANYTIME
+}
+
+model User {
+  id         String   @id @default(uuid())
+  telegramId String   @unique
+  username   String
+  language   String?
+  xp         Decimal  @default(0)
+  level      Decimal  @default(0)
+  createdAt  DateTime @default(now())
+
+  habits Habit[]
+  awards UserAwards[]
+}
+
+model Habit {
+  id         String         @id @default(uuid())
+  title      String
+  weekDays   Int[]
+  repeats    Int
+  timeOfDay  HabitTimeOfDay
+  userHabits UserHabit[]
+  icon       String?
+  user       User           @relation(fields: [userId], references: [id])
+  userId     String
+  createdAt  DateTime       @default(now())
+}
+
+model UserHabit {
+  id        String      @id @default(uuid())
+  status    HabitStatus @default(IN_PROGRESS)
+  repeats   Int         @default(0)
+  habit     Habit       @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  habitId   String
+  createdAt DateTime    @default(now())
+}
+
+model Award {
+  id    String       @id @default(uuid())
+  title String
+  users UserAwards[]
+}
+
+model UserAwards {
+  id      String @id @default(uuid())
+  award   Award  @relation(fields: [awardId], references: [id])
+  user    User   @relation(fields: [userId], references: [id])
+  userId  String
+  awardId String
+}
