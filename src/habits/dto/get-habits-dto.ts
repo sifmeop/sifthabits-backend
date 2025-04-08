@@ -1,4 +1,4 @@
-import { IsNumber, Validate, ValidatorConstraint, ValidatorConstraintInterface } from 'class-validator'
+import { IsString, Validate, ValidatorConstraint, ValidatorConstraintInterface } from 'class-validator'
 
 @ValidatorConstraint({ name: 'IsValidTimestamp', async: false })
 class IsValidTimestampConstraint implements ValidatorConstraintInterface {
@@ -13,11 +13,11 @@ class IsValidTimestampConstraint implements ValidatorConstraintInterface {
 }
 
 export class GetHabitsDto {
-  @IsNumber()
+  @IsString()
   @Validate(IsValidTimestampConstraint)
   from: string
 
-  @IsNumber()
+  @IsString()
   @Validate(IsValidTimestampConstraint)
   to: string
 }
