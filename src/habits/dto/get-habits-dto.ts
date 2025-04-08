@@ -1,9 +1,8 @@
-import { Type } from 'class-transformer'
 import { IsNumber, Validate, ValidatorConstraint, ValidatorConstraintInterface } from 'class-validator'
 
 @ValidatorConstraint({ name: 'IsValidTimestamp', async: false })
 class IsValidTimestampConstraint implements ValidatorConstraintInterface {
-  validate(value: number) {
+  validate(value: string) {
     const date = new Date(value)
     return !isNaN(date.getTime())
   }
@@ -14,13 +13,11 @@ class IsValidTimestampConstraint implements ValidatorConstraintInterface {
 }
 
 export class GetHabitsDto {
-  @Type(() => Number)
   @IsNumber()
   @Validate(IsValidTimestampConstraint)
-  from: number
+  from: string
 
-  @Type(() => Number)
   @IsNumber()
   @Validate(IsValidTimestampConstraint)
-  to: number
+  to: string
 }

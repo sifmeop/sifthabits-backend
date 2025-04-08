@@ -60,8 +60,8 @@ export class HabitsService {
   }
 
   async getHabits(userId: string, data: GetHabitsDto) {
-    const from = new Date(+data.from)
-    const to = new Date(+data.to)
+    const from = new Date(data.from)
+    const to = new Date(data.to)
 
     const userHabits = await this.prisma.userHabit.findMany({
       where: {
