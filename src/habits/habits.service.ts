@@ -80,12 +80,6 @@ export class HabitsService {
 
     const rangeDates = getRangeDates(from, to)
 
-    console.log({
-      from,
-      to,
-      rangeDates
-    })
-
     const weeklySummary = rangeDates.reduce<Record<number, (UserHabit & { habit: Habit })[]>>((acc, date, index) => {
       const habits = userHabits.filter((userHabit) => dayjs(userHabit.createdAt).isSame(date, 'day'))
 
@@ -114,8 +108,7 @@ export class HabitsService {
           ? {
               create: {}
             }
-          : undefined,
-        createdAt: new Date(body.createdAt)
+          : undefined
       },
       include: {
         userHabits: true
@@ -195,28 +188,11 @@ export class HabitsService {
   }
 
   async deleteHabit(userId: string, habitId: string) {
-    return await this.prisma.$transaction(async (tx) => {
-      const userHabit = await tx.userHabit.findUnique({
-        where: {
-          id: habitId,
-          habit: {
-            userId
-          }
-        },
-        include: {
-          habit: true
-        }
-      })
-
-      if (!userHabit) {
-        throw new HttpException('Habit not found', 404)
+    return await this.prisma.habit.delete({
+      where: {
+        id: habitId,
+        userId
       }
-
-      return await tx.habit.delete({
-        where: {
-          id: userHabit.habit.id
-        }
-      })
     })
   }
 
@@ -306,7 +282,7 @@ export class HabitsService {
   }
 
   async undoHabit(userId: string, habitId: string) {
-    await this.prisma.$transaction(async (tx) => {
+    return await this.prisma.$transaction(async (tx) => {
       const userHabit = await tx.userHabit.findUnique({
         where: {
           id: habitId,
@@ -327,21 +303,24 @@ export class HabitsService {
         throw new HttpException('Habit not found', 404)
       }
 
-      if (userHabit.status === HabitStatus.IN_PROGRESS) {
-        throw new HttpException('Habit already in progress', 400)
+      if (userHabit.repeats === 0) {
+        throw new HttpException('Habit already undone', 400)
       }
+
+      const newRepeats = userHabit.repeats - 1
 
       const upUserHabit = await tx.userHabit.update({
         where: {
           id: habitId
         },
         data: {
+          repeats: newRepeats,
           status: HabitStatus.IN_PROGRESS
         }
       })
 
       const user = userHabit.habit.user
-      let newXp = user.xp.toNumber() + this.XP_PER_HABIT
+      let newXp = user.xp.toNumber() - this.XP_PER_HABIT
       let newLevel = user.level.toNumber()
 
       while (newXp < 0 && newLevel > 0) {
