@@ -80,6 +80,12 @@ export class HabitsService {
 
     const rangeDates = getRangeDates(from, to)
 
+    console.log({
+      from,
+      to,
+      rangeDates
+    })
+
     const weeklySummary = rangeDates.reduce<Record<number, (UserHabit & { habit: Habit })[]>>((acc, date, index) => {
       const habits = userHabits.filter((userHabit) => dayjs(userHabit.createdAt).isSame(date, 'day'))
 
