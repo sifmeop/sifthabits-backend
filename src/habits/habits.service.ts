@@ -15,24 +15,24 @@ export class HabitsService implements OnModuleInit {
   constructor(private readonly prisma: PrismaService) {}
 
   async onModuleInit() {
-    await this.habitCreationReminder()
+    await this.processDailyHabits()
   }
 
   @Cron('0 0 * * *')
   async handleCron() {
-    await this.habitCreationReminder()
+    await this.processDailyHabits()
   }
 
-  async habitCreationReminder() {
-    const now = dayjs.utc().startOf('day')
-    const yesterday = dayjs.utc(now).subtract(1, 'day')
+  async processDailyHabits() {
+    const today = dayjs.utc().startOf('day')
+    const yesterday = dayjs.utc(today).subtract(1, 'day')
 
     await this.prisma.$transaction(async (tx) => {
       await tx.userHabit.updateMany({
         where: {
           createdAt: {
             gte: yesterday.toDate(),
-            lt: now.toDate()
+            lt: today.toDate()
           },
           status: HabitStatus.IN_PROGRESS
         },
@@ -41,7 +41,7 @@ export class HabitsService implements OnModuleInit {
         }
       })
 
-      let dayOfWeek = now.get('d')
+      let dayOfWeek = today.get('d')
       dayOfWeek = dayOfWeek === 0 ? 7 : dayOfWeek
 
       const habits = await tx.habit.findMany({
@@ -56,16 +56,21 @@ export class HabitsService implements OnModuleInit {
         }
       })
 
-      const habitIdsToCreate = habits
-        .filter((habit) => !habit.userHabits.some((userHabit) => now.isSame(userHabit.createdAt, 'day')))
-        .map((habit) => ({ habitId: habit.id }))
+      const now = dayjs.utc()
 
-      if (habitIdsToCreate.length === 0) {
+      const habitsToCreate = habits
+        .filter((habit) => !habit.userHabits.some((userHabit) => now.isSame(userHabit.createdAt, 'day')))
+        .map((habit, index) => ({
+          habitId: habit.id,
+          createdAt: now.add(index + 1, 'second').toDate()
+        }))
+
+      if (habitsToCreate.length === 0) {
         return
       }
 
       await tx.userHabit.createMany({
-        data: habitIdsToCreate
+        data: habitsToCreate
       })
     })
   }
