@@ -41,7 +41,7 @@ model Habit {
   timeOfDay  HabitTimeOfDay
   userHabits UserHabit[]
   icon       String?
-  user       User           @relation(fields: [userId], references: [id])
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId     String
   createdAt  DateTime       @default(now())
 }
@@ -63,8 +63,8 @@ model Award {
 
 model UserAwards {
   id      String @id @default(uuid())
-  award   Award  @relation(fields: [awardId], references: [id])
-  user    User   @relation(fields: [userId], references: [id])
+  award   Award  @relation(fields: [awardId], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId  String
   awardId String
 }
