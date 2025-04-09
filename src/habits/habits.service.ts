@@ -1,7 +1,7 @@
-import { HttpException, Injectable } from '@nestjs/common'
+import { HttpException, Injectable, OnModuleInit } from '@nestjs/common'
 import { Cron } from '@nestjs/schedule'
 import { Habit, HabitStatus, Prisma, UserHabit } from '@prisma/client'
-import * as dayjs from 'dayjs'
+import dayjs from 'dayjs'
 import { getRangeDates } from '~/common/utils/getRangeDates'
 import { PrismaService } from '~/prisma/prisma.service'
 import { CreateHabitDto } from './dto/create-hobit-dto'
@@ -9,24 +9,30 @@ import { EditHabitDto } from './dto/edit-hobit-dto'
 import { GetHabitsDto } from './dto/get-habits-dto'
 
 @Injectable()
-export class HabitsService {
+export class HabitsService implements OnModuleInit {
   private readonly XP_PER_HABIT = 10
 
   constructor(private readonly prisma: PrismaService) {}
 
+  async onModuleInit() {
+    await this.habitCreationReminder()
+  }
+
   @Cron('0 0 * * *')
   async handleCron() {
-    const now = new Date()
-    const todayMidnight = new Date(now.setHours(0, 0, 0, 0))
-    const yesterdayMidnight = new Date(todayMidnight)
-    yesterdayMidnight.setDate(todayMidnight.getDate() - 1)
+    await this.habitCreationReminder()
+  }
+
+  async habitCreationReminder() {
+    const now = dayjs.utc().startOf('day')
+    const yesterday = dayjs.utc(now).subtract(1, 'day')
 
     await this.prisma.$transaction(async (tx) => {
       await tx.userHabit.updateMany({
         where: {
           createdAt: {
-            gte: yesterdayMidnight,
-            lt: todayMidnight
+            gte: yesterday.toDate(),
+            lt: now.toDate()
           },
           status: HabitStatus.IN_PROGRESS
         },
@@ -35,7 +41,7 @@ export class HabitsService {
         }
       })
 
-      let dayOfWeek = todayMidnight.getDay()
+      let dayOfWeek = now.get('d')
       dayOfWeek = dayOfWeek === 0 ? 7 : dayOfWeek
 
       const habits = await tx.habit.findMany({
@@ -45,17 +51,22 @@ export class HabitsService {
           }
         },
         select: {
-          id: true
+          id: true,
+          userHabits: true
         }
       })
 
-      if (habits.length > 0) {
-        await tx.userHabit.createMany({
-          data: habits.map((habit) => ({
-            habitId: habit.id
-          }))
-        })
+      const habitIdsToCreate = habits
+        .filter((habit) => !habit.userHabits.some((userHabit) => now.isSame(userHabit.createdAt, 'day')))
+        .map((habit) => ({ habitId: habit.id }))
+
+      if (habitIdsToCreate.length === 0) {
+        return
       }
+
+      await tx.userHabit.createMany({
+        data: habitIdsToCreate
+      })
     })
   }
 
@@ -81,7 +92,7 @@ export class HabitsService {
     const rangeDates = getRangeDates(from, to)
 
     const weeklySummary = rangeDates.reduce<Record<number, (UserHabit & { habit: Habit })[]>>((acc, date, index) => {
-      const habits = userHabits.filter((userHabit) => dayjs(userHabit.createdAt).isSame(date, 'day'))
+      const habits = userHabits.filter((userHabit) => dayjs.utc(userHabit.createdAt).isSame(date, 'day'))
 
       const sortedHabits = [...habits].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 
