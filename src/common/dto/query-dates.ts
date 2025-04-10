@@ -12,7 +12,7 @@ class IsValidTimestampConstraint implements ValidatorConstraintInterface {
   }
 }
 
-export class GetHabitsDto {
+export class QueryDatesDto {
   @IsString()
   @Validate(IsValidTimestampConstraint)
   from: string

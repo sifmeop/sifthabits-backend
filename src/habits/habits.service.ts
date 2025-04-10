@@ -2,11 +2,11 @@ import { HttpException, Injectable, OnModuleInit } from '@nestjs/common'
 import { Cron } from '@nestjs/schedule'
 import { Habit, HabitStatus, Prisma, UserHabit } from '@prisma/client'
 import dayjs from 'dayjs'
+import { QueryDatesDto } from '~/common/dto/query-dates'
 import { getRangeDates } from '~/common/utils/getRangeDates'
 import { PrismaService } from '~/prisma/prisma.service'
 import { CreateHabitDto } from './dto/create-hobit-dto'
 import { EditHabitDto } from './dto/edit-hobit-dto'
-import { GetHabitsDto } from './dto/get-habits-dto'
 
 @Injectable()
 export class HabitsService implements OnModuleInit {
@@ -75,38 +75,69 @@ export class HabitsService implements OnModuleInit {
     })
   }
 
-  async getHabits(userId: string, data: GetHabitsDto) {
+  async getHabits(userId: string, data: QueryDatesDto) {
     const from = new Date(data.from)
     const to = new Date(data.to)
 
-    const userHabits = await this.prisma.userHabit.findMany({
-      where: {
-        habit: {
-          userId
-        },
-        createdAt: {
-          gte: from,
-          lte: to
-        }
-      },
-      include: {
-        habit: true
-      }
-    })
-
     const rangeDates = getRangeDates(from, to)
 
-    const weeklySummary = rangeDates.reduce<Record<number, (UserHabit & { habit: Habit })[]>>((acc, date, index) => {
-      const habits = userHabits.filter((userHabit) => dayjs.utc(userHabit.createdAt).isSame(date, 'day'))
+    const result = await this.prisma.$transaction(async (tx) => {
+      const userHabits = await tx.userHabit.findMany({
+        where: {
+          habit: {
+            userId
+          }
+        },
+        orderBy: {
+          createdAt: 'asc'
+        },
+        include: {
+          habit: true
+        }
+      })
 
-      const sortedHabits = [...habits].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      const weeklySummary = rangeDates.reduce<Record<number, (UserHabit & { habit: Habit; streak: number })[]>>(
+        (acc, date, index) => {
+          const habits = userHabits.filter((userHabit) => dayjs.utc(userHabit.createdAt).isSame(date, 'day'))
 
-      acc[index + 1] = sortedHabits
+          const sortedHabits = habits
+            .filter((habit) => dayjs(habit.createdAt).isBetween(from, to))
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 
-      return acc
-    }, {})
+          let streak: Record<string, number> | undefined
 
-    return weeklySummary
+          if (dayjs.utc().isSame(date, 'day')) {
+            streak = userHabits.reduce((acc, userHabit) => {
+              if (!acc[userHabit.habitId]) {
+                acc[userHabit.habitId] = 0
+              }
+
+              if (userHabit.status === HabitStatus.DONE) {
+                acc[userHabit.habitId]++
+              } else if (userHabit.status === HabitStatus.MISSED) {
+                acc[userHabit.habitId] = 0
+              }
+
+              return acc
+            }, {})
+          }
+
+          const result = sortedHabits.map((userHabit) => ({
+            ...userHabit,
+            streak: streak?.[userHabit.habitId]
+          }))
+
+          acc[index + 1] = result
+
+          return acc
+        },
+        {}
+      )
+
+      return weeklySummary
+    })
+
+    return result
   }
 
   async createHabit(userId: string, body: CreateHabitDto) {
@@ -323,7 +354,9 @@ export class HabitsService implements OnModuleInit {
         throw new HttpException('Habit already undone', 400)
       }
 
-      const newRepeats = userHabit.repeats - 1
+      const isOldHabit = dayjs.utc(userHabit.createdAt).isBefore(dayjs.utc().subtract(1, 'day'))
+
+      const newRepeats = isOldHabit ? 0 : userHabit.repeats - 1
 
       const upUserHabit = await tx.userHabit.update({
         where: {
@@ -331,7 +364,7 @@ export class HabitsService implements OnModuleInit {
         },
         data: {
           repeats: newRepeats,
-          status: HabitStatus.IN_PROGRESS
+          status: isOldHabit ? HabitStatus.MISSED : HabitStatus.IN_PROGRESS
         }
       })
 
