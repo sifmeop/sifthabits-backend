@@ -27,6 +27,7 @@ model User {
   language   String?
   xp         Decimal  @default(0)
   level      Decimal  @default(0)
+  isBlocked  Boolean  @default(false)
   createdAt  DateTime @default(now())
 
   habits Habit[]

@@ -32,9 +32,6 @@ export class TelegramService {
       }
     })
 
-    const photoUrl = await ctx.telegram.getUserProfilePhotos(Number(telegramId))
-    console.log(JSON.stringify(photoUrl.photos, null, 2))
-
     if (!user) {
       await this.prisma.user.create({
         data: {
