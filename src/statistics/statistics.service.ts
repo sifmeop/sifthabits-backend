@@ -2,14 +2,19 @@ import { Injectable } from '@nestjs/common'
 import { HabitStatus } from '@prisma/client'
 import dayjs from 'dayjs'
 import { QueryDatesDto } from '~/common/dto/query-dates'
+import { calculateXpForNextLevel } from '~/common/utils/calculateXpForNextLevel'
 import { getRangeDates } from '~/common/utils/getRangeDates'
 import { PrismaService } from '~/prisma/prisma.service'
+import { TelegramService } from '~/telegram/telegram.service'
 
 @Injectable()
 export class StatisticsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly telegramService: TelegramService
+  ) {}
 
-  async getStatistics(userId: string, data: QueryDatesDto) {
+  async getUserStatistics(userId: string, data: QueryDatesDto) {
     const from = new Date(data.from)
     const to = new Date(data.to)
 
@@ -28,16 +33,17 @@ export class StatisticsService {
     })
 
     const result = habits.map((habit) => {
-      const summary = rangeDates.reduce((acc, date) => {
+      const summary = rangeDates.reduce<Record<string, number | null>>((acc, date) => {
+        const dateA = dayjs.utc(date).set('h', 0).set('m', 0).set('s', 0).set('ms', 0)
+        const dateB = dayjs.utc(date).set('h', 23).set('m', 59).set('s', 59).set('ms', 999)
+
         const userHabits = habit.userHabits.filter((userHabit) => {
-          const dateA = dayjs.utc(date)
-          const dateB = dayjs.utc(date).add(1, 'day').set('s', -1)
           return dayjs.utc(userHabit.createdAt).isBetween(dateA, dateB)
         })
 
-        const totalRepeats = habit.repeats
-        const doneRepeats = userHabits[0]?.repeats ?? 0
-        const percentDone = (doneRepeats / totalRepeats) * 100
+        const totalRepeats = habit.repeats * userHabits.length
+        const doneRepeats = userHabits.length === 0 ? null : userHabits.reduce((acc, { repeats }) => acc + repeats, 0)
+        const percentDone = doneRepeats !== null ? (doneRepeats / totalRepeats) * 100 : null
 
         acc[dayjs.utc(date).format('YYYY-MM-DD')] = percentDone
 
@@ -78,6 +84,7 @@ export class StatisticsService {
       return {
         id: habit.id,
         title: habit.title,
+        timeOfDay: habit.timeOfDay,
         streak,
         longest: Math.max(...Object.values(longest)),
         completed,
@@ -86,5 +93,33 @@ export class StatisticsService {
     })
 
     return result
+  }
+
+  async getGlobalStatistics(userId: string) {
+    const users = await this.prisma.user.findMany()
+
+    const promise = users.map(async ({ id, telegramId, username, level, xp, createdAt }) => {
+      const photoUrl = await this.telegramService.getUserPhotoUrl(Number(telegramId))
+
+      return {
+        id,
+        telegramId,
+        username,
+        level,
+        xp,
+        xpToNextLevel: calculateXpForNextLevel(level.toNumber()),
+        photoUrl,
+        createdAt
+      }
+    })
+
+    const result = await Promise.all(promise)
+
+    const user = result.find((user) => user.id === userId)
+
+    return {
+      user: user,
+      users: result
+    }
   }
 }

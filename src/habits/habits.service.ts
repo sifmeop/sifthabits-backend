@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule'
 import { Habit, HabitStatus, Prisma, UserHabit } from '@prisma/client'
 import dayjs from 'dayjs'
 import { QueryDatesDto } from '~/common/dto/query-dates'
+import { calculateXpForNextLevel } from '~/common/utils/calculateXpForNextLevel'
 import { getRangeDates } from '~/common/utils/getRangeDates'
 import { PrismaService } from '~/prisma/prisma.service'
 import { CreateHabitDto } from './dto/create-hobit-dto'
@@ -18,7 +19,7 @@ export class HabitsService implements OnModuleInit {
     await this.processDailyHabits()
   }
 
-  @Cron('0 0 * * *')
+  @Cron('0 * * * *')
   async handleCron() {
     await this.processDailyHabits()
   }
@@ -300,7 +301,7 @@ export class HabitsService implements OnModuleInit {
       let newXp = user.xp.toNumber() + this.XP_PER_HABIT
       let newLevel = user.level.toNumber()
 
-      const xpToNextLevel = this.calculateXpForNextLevel(newLevel)
+      const xpToNextLevel = calculateXpForNextLevel(newLevel)
 
       while (newXp >= xpToNextLevel) {
         newXp -= xpToNextLevel
@@ -374,7 +375,7 @@ export class HabitsService implements OnModuleInit {
 
       while (newXp < 0 && newLevel > 0) {
         newLevel--
-        const xpForPreviousLevel = this.calculateXpForNextLevel(newLevel)
+        const xpForPreviousLevel = calculateXpForNextLevel(newLevel)
         newXp += xpForPreviousLevel
       }
 
@@ -399,9 +400,5 @@ export class HabitsService implements OnModuleInit {
 
       return { habit: upUserHabit, user: upUser }
     })
-  }
-
-  calculateXpForNextLevel(level: number) {
-    return 100 + level * 50
   }
 }

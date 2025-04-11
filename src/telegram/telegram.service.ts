@@ -13,7 +13,7 @@ export class TelegramService {
     this.bot.launch()
   }
 
-  private setupCommands() {
+  setupCommands() {
     this.bot.command('start', async (ctx) => {
       await this.handleStart(ctx)
     })
@@ -31,6 +31,9 @@ export class TelegramService {
         id: true
       }
     })
+
+    const photoUrl = await ctx.telegram.getUserProfilePhotos(Number(telegramId))
+    console.log(JSON.stringify(photoUrl.photos, null, 2))
 
     if (!user) {
       await this.prisma.user.create({
@@ -59,5 +62,23 @@ export class TelegramService {
         ]
       }
     })
+  }
+
+  async getUserPhotoUrl(telegramId: number) {
+    try {
+      const { photos, total_count } = await this.bot.telegram.getUserProfilePhotos(telegramId)
+
+      if (total_count === 0) {
+        return null
+      }
+
+      const fileId = photos[0][0].file_id
+
+      const response = await this.bot.telegram.getFileLink(fileId)
+
+      return response.href
+    } catch (erro) {
+      return null
+    }
   }
 }

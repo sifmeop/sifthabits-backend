@@ -8,7 +8,12 @@ export class StatisticsController {
   constructor(private readonly statisticsService: StatisticsService) {}
 
   @Get()
-  async getStatistics(@GetCurrentUserId() userId: string, @Query() data: QueryDatesDto) {
-    return await this.statisticsService.getStatistics(userId, data)
+  async getUserStatistics(@GetCurrentUserId() userId: string, @Query() data: QueryDatesDto) {
+    return await this.statisticsService.getUserStatistics(userId, data)
+  }
+
+  @Get('/global')
+  async getGlobalStatistics(@GetCurrentUserId() userId: string) {
+    return await this.statisticsService.getGlobalStatistics(userId)
   }
 }
