@@ -25,15 +25,13 @@ export class HabitsService implements OnModuleInit {
   }
 
   async processDailyHabits() {
-    const today = dayjs.utc().startOf('day')
-    const yesterday = dayjs.utc(today).subtract(1, 'day')
+    const today = dayjs.utc().startOf('day').set('h', 0).set('m', 0).set('s', 0).set('ms', 0)
 
     await this.prisma.$transaction(async (tx) => {
       await tx.userHabit.updateMany({
         where: {
           createdAt: {
-            gte: yesterday.toDate(),
-            lt: today.toDate()
+            lte: today.toDate()
           },
           status: HabitStatus.IN_PROGRESS
         },
@@ -355,7 +353,8 @@ export class HabitsService implements OnModuleInit {
         throw new HttpException('Habit already undone', 400)
       }
 
-      const isOldHabit = dayjs.utc(userHabit.createdAt).isBefore(dayjs.utc().subtract(1, 'day'))
+      const today = dayjs.utc().set('h', 0).set('m', 0).set('s', 0).set('ms', 0)
+      const isOldHabit = dayjs.utc(userHabit.createdAt).isBefore(today)
 
       const newRepeats = isOldHabit ? 0 : userHabit.repeats - 1
 
