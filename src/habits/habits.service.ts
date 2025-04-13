@@ -439,7 +439,11 @@ export class HabitsService implements OnModuleInit {
           }
         },
         data: {
+          repeats: 0,
           status: HabitStatus.MISSED
+        },
+        include: {
+          habit: true
         }
       })
     })
