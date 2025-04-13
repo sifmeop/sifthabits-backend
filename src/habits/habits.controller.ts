@@ -30,12 +30,17 @@ export class HabitsController {
   }
 
   @Put(':habitId/done')
-  async completeHabit(@GetCurrentUserId() userId: string, @Param('habitId') habitId: string) {
+  async markHabitAsDone(@GetCurrentUserId() userId: string, @Param('habitId') habitId: string) {
     return await this.habitsService.markHabitAsDone(userId, habitId)
   }
 
   @Put(':habitId/undo')
   async undoHabit(@GetCurrentUserId() userId: string, @Param('habitId') habitId: string) {
     return await this.habitsService.undoHabit(userId, habitId)
+  }
+
+  @Put(':habitId/missed')
+  async markHabitAsMissed(@GetCurrentUserId() userId: string, @Param('habitId') habitId: string) {
+    return await this.habitsService.markHabitAsMissed(userId, habitId)
   }
 }

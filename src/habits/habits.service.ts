@@ -400,4 +400,48 @@ export class HabitsService implements OnModuleInit {
       return { habit: upUserHabit, user: upUser }
     })
   }
+
+  async markHabitAsMissed(userId: string, habitId: string) {
+    return await this.prisma.$transaction(async (tx) => {
+      const userHabit = await tx.userHabit.findUnique({
+        where: {
+          id: habitId,
+          habit: {
+            userId
+          }
+        },
+        include: {
+          habit: {
+            include: {
+              user: true
+            }
+          }
+        }
+      })
+
+      if (!userHabit) {
+        throw new HttpException('Habit not found', 404)
+      }
+
+      if (userHabit.status === HabitStatus.DONE) {
+        throw new HttpException('Habit already done', 400)
+      }
+
+      if (userHabit.status === HabitStatus.MISSED) {
+        throw new HttpException('Habit already missed', 400)
+      }
+
+      return await tx.userHabit.update({
+        where: {
+          id: habitId,
+          habit: {
+            userId
+          }
+        },
+        data: {
+          status: HabitStatus.MISSED
+        }
+      })
+    })
+  }
 }
