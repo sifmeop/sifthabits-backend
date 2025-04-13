@@ -75,10 +75,10 @@ export class HabitsService implements OnModuleInit {
   }
 
   async getHabits(userId: string, data: QueryDatesDto) {
-    const from = new Date(data.from)
-    const to = new Date(data.to)
+    const from = dayjs.utc(data.from).set('h', 0).set('m', 0).set('s', 0).set('ms', 0)
+    const to = dayjs.utc(data.to).set('h', 23).set('m', 59).set('s', 59).set('ms', 999)
 
-    const rangeDates = getRangeDates(from, to)
+    const rangeDates = getRangeDates(from.toDate(), to.toDate())
 
     const result = await this.prisma.$transaction(async (tx) => {
       const userHabits = await tx.userHabit.findMany({
