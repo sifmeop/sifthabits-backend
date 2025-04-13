@@ -423,10 +423,6 @@ export class HabitsService implements OnModuleInit {
         throw new HttpException('Habit not found', 404)
       }
 
-      if (userHabit.status === HabitStatus.DONE) {
-        throw new HttpException('Habit already done', 400)
-      }
-
       if (userHabit.status === HabitStatus.MISSED) {
         throw new HttpException('Habit already missed', 400)
       }
