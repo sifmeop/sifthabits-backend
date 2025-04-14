@@ -1,13 +1,24 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common'
+import { Reflector } from '@nestjs/core'
 import { parse, validate } from '@telegram-apps/init-data-node'
 import { NODE_ENV, TELEGRAM_BOT_TOKEN } from '~/constants/env'
 import { PrismaService } from '~/prisma/prisma.service'
+import { IS_PUBLIC } from '../decorators/is-public'
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly prisma: PrismaService
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC, [context.getHandler(), context.getClass()])
+
+    if (isPublic) {
+      return true
+    }
+
     const request = context.switchToHttp().getRequest()
 
     if (NODE_ENV === 'development') {

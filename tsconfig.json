@@ -13,6 +13,7 @@
     "baseUrl": "./src/",
     "paths": {
       "~/constants/*": ["./common/constants/*"],
+      "~/decorators/*": ["./common/decorators/*"],
       "~/*": ["./*"]
     },
     "incremental": true,
