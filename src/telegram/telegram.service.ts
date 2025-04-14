@@ -10,7 +10,22 @@ export class TelegramService {
   constructor(private readonly prisma: PrismaService) {
     this.bot = new Telegraf<Context>(TELEGRAM_BOT_TOKEN)
     this.setupCommands()
-    this.bot.launch()
+    this.launchBotSafely()
+  }
+
+  private async launchBotSafely() {
+    try {
+      const isActiveDeployment = process.env.KOYEB_DEPLOYMENT_VERSION === process.env.KOYEB_ACTIVE_DEPLOYMENT_VERSION
+
+      if (isActiveDeployment) {
+        console.log('Launching Telegram bot...')
+        await this.bot.launch()
+      } else {
+        console.log('Skipping bot launch during deployment')
+      }
+    } catch (error) {
+      console.error('Failed to launch bot:', error)
+    }
   }
 
   setupCommands() {
