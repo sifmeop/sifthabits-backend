@@ -6,6 +6,16 @@ import { PrismaService } from '~/prisma/prisma.service'
 @Injectable()
 export class TelegramService implements OnModuleDestroy, OnApplicationShutdown {
   private bot: Telegraf<Context>
+  private REMINDER_MESSAGES = [
+    'It’s time to conquer *{habitTitle}*! Let’s make it happen! 💪',
+    'Your *{habitTitle}* won’t complete itself. Time to shine! ✨',
+    'Small steps lead to big wins. Let’s crush *{habitTitle}* today! 🚀',
+    'Hey, champion! *{habitTitle}* is calling. Ready to level up? 🏆',
+    'Another day, another victory! *{habitTitle}* is waiting for you! 🎯',
+    'Habit warriors never rest! Time to tackle *{habitTitle}*! 🛡️',
+    'Stay consistent, stay powerful — go rock your *{habitTitle}*! 🔥',
+    'Your future self says thank you. Let’s do *{habitTitle}* now! 🕒'
+  ]
 
   constructor(private readonly prisma: PrismaService) {
     this.bot = new Telegraf<Context>(TELEGRAM_BOT_TOKEN)
@@ -92,6 +102,35 @@ export class TelegramService implements OnModuleDestroy, OnApplicationShutdown {
     } catch (erro) {
       return null
     }
+  }
+
+  async sendRemindNotification(telegramId: number, habitTitle: string) {
+    try {
+      const caption = this.getRandomReminder(habitTitle)
+
+      await this.bot.telegram.sendMessage(telegramId, caption, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: 'Go to App',
+                web_app: {
+                  url: MINI_APP_URL
+                }
+              }
+            ]
+          ]
+        }
+      })
+    } catch (error) {
+      console.error(`Error sending notification to ${telegramId}:`, error)
+    }
+  }
+
+  getRandomReminder(habitTitle: string) {
+    const randomMessage = this.REMINDER_MESSAGES[Math.floor(Math.random() * this.REMINDER_MESSAGES.length)]
+    return randomMessage.replace('{habitTitle}', habitTitle)
   }
 
   async onModuleDestroy() {

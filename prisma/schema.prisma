@@ -41,7 +41,7 @@ model Habit {
   repeats    Int
   timeOfDay  HabitTimeOfDay
   userHabits UserHabit[]
-  icon       String?
+  remindAt   String?
   user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId     String
   createdAt  DateTime       @default(now())

@@ -1,5 +1,16 @@
 import { HabitTimeOfDay } from '@prisma/client'
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsEnum, IsNumber, IsString, Min, MinLength } from 'class-validator'
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsEnum,
+  IsNumber,
+  IsString,
+  Matches,
+  Min,
+  MinLength,
+  ValidateIf
+} from 'class-validator'
 
 export class CreateHabitDto {
   @IsString()
@@ -18,4 +29,10 @@ export class CreateHabitDto {
 
   @IsEnum(HabitTimeOfDay)
   timeOfDay: HabitTimeOfDay
+
+  @ValidateIf((obj) => obj.remindAt !== null)
+  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
+    message: 'remindAt must be in HH:mm format or null'
+  })
+  remindAt: string | null
 }

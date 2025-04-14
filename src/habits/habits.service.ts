@@ -6,6 +6,7 @@ import { QueryDatesDto } from '~/common/dto/query-dates'
 import { calculateXpForNextLevel } from '~/common/utils/calculateXpForNextLevel'
 import { getRangeDates } from '~/common/utils/getRangeDates'
 import { PrismaService } from '~/prisma/prisma.service'
+import { TelegramService } from '~/telegram/telegram.service'
 import { CreateHabitDto } from './dto/create-hobit-dto'
 import { EditHabitDto } from './dto/edit-hobit-dto'
 
@@ -13,15 +14,23 @@ import { EditHabitDto } from './dto/edit-hobit-dto'
 export class HabitsService implements OnModuleInit {
   private readonly XP_PER_HABIT = 10
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly telegramService: TelegramService
+  ) {}
 
   async onModuleInit() {
     await this.processDailyHabits()
   }
 
   @Cron('0 * * * *')
-  async handleCron() {
+  async handleCronEveryHour() {
     await this.processDailyHabits()
+  }
+
+  @Cron('* * * * *')
+  async handleCronEveryMinute() {
+    await this.remindHabits()
   }
 
   async processDailyHabits() {
@@ -40,8 +49,7 @@ export class HabitsService implements OnModuleInit {
         }
       })
 
-      let dayOfWeek = today.get('d')
-      dayOfWeek = dayOfWeek === 0 ? 7 : dayOfWeek
+      const dayOfWeek = today.isoWeekday()
 
       const habits = await tx.habit.findMany({
         where: {
@@ -72,6 +80,36 @@ export class HabitsService implements OnModuleInit {
         data: habitsToCreate
       })
     })
+  }
+
+  async remindHabits() {
+    const now = dayjs.utc().format('HH:mm')
+    const weekDay = dayjs().isoWeekday()
+
+    const habits = await this.prisma.habit.findMany({
+      where: {
+        remindAt: now,
+        weekDays: {
+          has: weekDay
+        }
+      },
+      select: {
+        title: true,
+        user: {
+          select: {
+            telegramId: true
+          }
+        }
+      }
+    })
+
+    if (habits.length) {
+      return
+    }
+
+    for (const habit of habits) {
+      await this.telegramService.sendRemindNotification(Number(habit.user.telegramId), habit.title)
+    }
   }
 
   async getHabits(userId: string, data: QueryDatesDto) {
@@ -150,6 +188,7 @@ export class HabitsService implements OnModuleInit {
         weekDays: body.weekDays,
         timeOfDay: body.timeOfDay,
         userId,
+        remindAt: body.remindAt,
         userHabits: body.weekDays.includes(day)
           ? {
               create: {}
@@ -200,6 +239,7 @@ export class HabitsService implements OnModuleInit {
           repeats: body.repeats,
           weekDays: body.weekDays,
           timeOfDay: body.timeOfDay,
+          remindAt: body.remindAt,
           userHabits: {
             update: {
               where: {
