@@ -103,7 +103,7 @@ export class HabitsService implements OnModuleInit {
       }
     })
 
-    if (habits.length) {
+    if (habits.length === 0) {
       return
     }
 
