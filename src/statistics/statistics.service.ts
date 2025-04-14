@@ -96,10 +96,53 @@ export class StatisticsService {
   }
 
   async getGlobalStatistics(userId: string) {
-    const users = await this.prisma.user.findMany()
+    const startWeek = dayjs.utc().startOf('week').add(1, 'day').toDate()
+    const endWeek = dayjs.utc().endOf('week').add(1, 'day').toDate()
 
-    const promise = users.map(async ({ id, telegramId, username, level, xp, createdAt }) => {
+    const users = await this.prisma.user.findMany({
+      include: {
+        habits: {
+          include: {
+            userHabits: {
+              where: {
+                createdAt: {
+                  gte: startWeek,
+                  lte: endWeek
+                }
+              }
+            }
+          }
+        }
+      }
+    })
+
+    const rangeDates = getRangeDates(startWeek, endWeek)
+
+    const promise = users.map(async ({ id, telegramId, username, level, xp, createdAt, habits }) => {
       const photoUrl = await this.telegramService.getUserPhotoUrl(Number(telegramId))
+
+      const userHabits = habits.flatMap(({ userHabits }) => userHabits)
+
+      const weeklySummary = rangeDates.reduce<Record<string, number | null>>((acc, date) => {
+        const habits = userHabits.filter((userHabit) => dayjs.utc(userHabit.createdAt).isSame(date, 'day'))
+
+        const totalHabits = habits.length
+        const doneHabits = habits.reduce((acc, { status }) => {
+          if (status === HabitStatus.DONE) {
+            acc++
+          }
+
+          return acc
+        }, 0)
+        const percentDone = (doneHabits / totalHabits) * 100
+
+        const formattedDate = dayjs.utc(date).format('YYYY-MM-DD')
+        acc[formattedDate] = percentDone ?? 0
+
+        return acc
+      }, {})
+
+      const xpToNextLevel = calculateXpForNextLevel(level.toNumber())
 
       return {
         id,
@@ -107,9 +150,10 @@ export class StatisticsService {
         username,
         level,
         xp,
-        xpToNextLevel: calculateXpForNextLevel(level.toNumber()),
+        xpToNextLevel,
         photoUrl,
-        createdAt
+        createdAt,
+        weeklySummary
       }
     })
 
@@ -117,9 +161,17 @@ export class StatisticsService {
 
     const user = result.find((user) => user.id === userId)
 
+    const sortedUsers = result.sort((a, b) => {
+      const levelDiff = b.level.toNumber() - a.level.toNumber()
+      if (levelDiff !== 0) {
+        return levelDiff
+      }
+      return b.xp.toNumber() - a.xp.toNumber()
+    })
+
     return {
       user: user,
-      users: result
+      users: sortedUsers
     }
   }
 }
