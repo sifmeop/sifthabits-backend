@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, OnApplicationShutdown, OnModuleDestroy } from '@nestjs/common'
 import { Context, Telegraf } from 'telegraf'
 import { MINI_APP_URL, TELEGRAM_BOT_TOKEN } from '~/constants/env'
 import { PrismaService } from '~/prisma/prisma.service'
 
 @Injectable()
-export class TelegramService {
+export class TelegramService implements OnModuleDestroy, OnApplicationShutdown {
   private bot: Telegraf<Context>
 
   constructor(private readonly prisma: PrismaService) {
@@ -91,6 +91,26 @@ export class TelegramService {
       return response.href
     } catch (erro) {
       return null
+    }
+  }
+
+  async onModuleDestroy() {
+    console.log('TelegramService: onModuleDestroy called')
+    await this.botStopSafely()
+  }
+
+  async onApplicationShutdown(signal: string) {
+    console.log(`TelegramService: onApplicationShutdown called with signal: ${signal}`)
+    await this.botStopSafely()
+  }
+
+  private async botStopSafely() {
+    try {
+      console.log('Stopping Telegram bot...')
+      this.bot.stop()
+      console.log('Telegram bot stopped successfully.')
+    } catch (error) {
+      console.error('Error stopping Telegram bot:', error)
     }
   }
 }
