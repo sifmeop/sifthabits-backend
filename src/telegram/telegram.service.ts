@@ -53,7 +53,7 @@ export class TelegramService implements OnModuleDestroy, OnApplicationShutdown {
         telegramId
       },
       select: {
-        id: true
+        isBlocked: true
       }
     })
 
@@ -64,6 +64,11 @@ export class TelegramService implements OnModuleDestroy, OnApplicationShutdown {
           username
         }
       })
+    }
+
+    if (user.isBlocked) {
+      await ctx.sendMessage('You are blocked')
+      return
     }
 
     await this.generateMenu(ctx)
