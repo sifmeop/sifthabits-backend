@@ -44,11 +44,12 @@ export class AuthGuard implements CanActivate {
         telegramId
       },
       select: {
-        id: true
+        id: true,
+        isBlocked: true
       }
     })
 
-    if (!user) {
+    if (!user || user.isBlocked) {
       return false
     }
 
