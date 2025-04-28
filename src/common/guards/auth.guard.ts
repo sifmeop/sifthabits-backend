@@ -30,6 +30,8 @@ export class AuthGuard implements CanActivate {
 
     const initData = request.headers['tma-init-data']
 
+    console.debug(`INIT DATA: ${initData}`)
+
     try {
       validate(initData, TELEGRAM_BOT_TOKEN)
     } catch (error) {
