@@ -6,18 +6,10 @@ import { AppController } from './app.controller'
 import { AuthGuard } from './common/guards/auth.guard'
 import { HabitsModule } from './habits/habits.module'
 import { PrismaModule } from './prisma/prisma.module'
-import { StatisticsModule } from './statistics/statistics.module'
 import { TelegramModule } from './telegram/telegram.module'
 
 @Module({
-  imports: [
-    ConfigModule.forRoot(),
-    ScheduleModule.forRoot(),
-    TelegramModule,
-    PrismaModule,
-    HabitsModule,
-    StatisticsModule
-  ],
+  imports: [ConfigModule.forRoot(), ScheduleModule.forRoot(), TelegramModule, PrismaModule, HabitsModule],
   controllers: [AppController],
   providers: [
     {

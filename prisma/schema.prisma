@@ -11,6 +11,7 @@ enum HabitStatus {
   IN_PROGRESS
   DONE
   MISSED
+  SKIPPED
 }
 
 enum HabitTimeOfDay {
@@ -21,17 +22,16 @@ enum HabitTimeOfDay {
 }
 
 model User {
-  id         String   @id @default(uuid())
-  telegramId String   @unique
+  id         String       @id @default(uuid())
+  telegramId String       @unique
   username   String
   language   String?
-  xp         Decimal  @default(0)
-  level      Decimal  @default(0)
-  isBlocked  Boolean  @default(false)
-  createdAt  DateTime @default(now())
-
-  habits Habit[]
-  awards UserAwards[]
+  xp         Decimal      @default(0)
+  level      Decimal      @default(0)
+  isBlocked  Boolean      @default(false)
+  createdAt  DateTime     @default(now())
+  habits     Habit[]
+  awards     UserAwards[]
 }
 
 model Habit {
@@ -41,7 +41,6 @@ model Habit {
   repeats    Int
   timeOfDay  HabitTimeOfDay
   userHabits UserHabit[]
-  remindAt   String?
   user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId     String
   createdAt  DateTime       @default(now())
